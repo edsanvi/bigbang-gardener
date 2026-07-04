@@ -21,6 +21,10 @@ Producción: https://bigbang-gardener.vercel.app · Repo: https://github.com/eds
   - **Git + GitHub**: repo público edsanvi/bigbang-gardener.
   - Script de Vercel Analytics incluido en index.html.
 
+- v2.4 (2026-07-03):
+  - **Universo vivo**: render refactorizado a sprites por estructura (mini-canvas horneado una vez, compuesto con transformaciones por frame). Galaxias y copos rotan, brotes se mecen, mandalas respiran, cuásares pulsan, agujero negro con parpadeo Doppler + materia cayendo en espiral, destello recorriendo el copo. Culling por cámara, respeta prefers-reduced-motion, sprites a menor resolución si hay >30 estructuras.
+  - **Fichas cósmicas** (educativo): 8 fichas curadas en español (sistemas-L, Koch, galaxias, nebulosas planetarias, cuásares, agujeros negros, cometas, Big Bang) con imágenes de la biblioteca pública de la NASA (URLs verificadas, dominio público, carga lazy con fallback offline) y links a ciencia.nasa.gov / Wikipedia ES. Botón ⓘ junto a la vista previa (pulsa si no leída), índice en menú ♪, +✦50 por primera lectura, fila en estadísticas.
+
 ## Pendiente — pasos manuales de Erik (5 min)
 - [ ] **Conectar GitHub↔Vercel**: instala la app de Vercel en tu GitHub desde
       https://vercel.com/edsanvis-projects/bigbang-gardener/settings/git → "Connect Git Repository".
