@@ -270,6 +270,48 @@
   .shop-buy:disabled{opacity:.35; cursor:default;}
   .shop-buy:focus-visible{outline:2px solid var(--cyan); outline-offset:2px;}
 
+  /* ---------- fichas cósmicas ---------- */
+  #pvcol{display:flex; flex-direction:column; align-items:center; gap:6px; flex:0 0 auto; align-self:center;}
+  #infoBtn{
+    width:30px; height:30px; border-radius:50%; border:1px solid var(--line);
+    background:rgba(127,227,239,.08); color:var(--cyan); font-size:14px; line-height:1;
+    cursor:pointer; font-family:var(--serif); font-style:italic;
+  }
+  #infoBtn.unread{
+    border-color:var(--cyan); box-shadow:0 0 10px rgba(127,227,239,.55);
+    animation:breathe 2.4s ease-in-out infinite;
+  }
+  #infoBtn:focus-visible{outline:2px solid var(--cyan); outline-offset:2px;}
+  .feyebrow{
+    font-size:10px; letter-spacing:.24em; text-transform:uppercase;
+    color:var(--cyan); margin:0;
+  }
+  #fichaImg{
+    width:min(86vw,400px); max-height:30vh; object-fit:cover;
+    border-radius:12px; border:1px solid var(--line);
+  }
+  #fichaFacts{display:flex; flex-direction:column; gap:9px; max-width:min(88vw,430px);}
+  #fichaFacts .fact{
+    font-size:13px; line-height:1.55; color:var(--ink); text-align:left;
+    display:flex; gap:9px;
+  }
+  #fichaFacts .fact::before{content:'✦'; color:var(--gold); flex:0 0 auto;}
+  .fsrc{font-size:11px; color:var(--dim); max-width:86vw;}
+  .fsrc a{color:var(--cyan);}
+  #fichaList{
+    display:flex; flex-direction:column; gap:6px; width:min(88vw,420px);
+    max-height:50vh; overflow-y:auto; padding:2px;
+  }
+  .frow{
+    display:flex; align-items:center; gap:10px; border:1px solid var(--line);
+    border-radius:12px; padding:10px 12px; background:none; color:var(--ink);
+    font-family:var(--sans); font-size:13px; cursor:pointer; text-align:left;
+  }
+  .frow .fi{flex:1; min-width:0;}
+  .frow small{color:var(--dim); display:block; font-size:11px;}
+  .frow .st{margin-left:auto; color:var(--gold); font-size:12px; flex:0 0 auto; font-variant-numeric:tabular-nums;}
+  .frow:focus-visible{outline:2px solid var(--cyan); outline-offset:2px;}
+
   #statRows{display:flex; flex-direction:column; width:min(86vw,360px);}
   .stat{
     display:flex; justify-content:space-between; gap:18px;
@@ -359,6 +401,7 @@
   <div class="sep"></div>
   <button id="nameRow"><span class="dot"></span>Nombrar universo…</button>
   <button id="statsRow"><span class="dot"></span>Estadísticas</button>
+  <button id="fichasRow"><span class="dot"></span>Fichas cósmicas</button>
   <div class="sep"></div>
   <button id="copyRow"><span class="dot"></span>Copiar código de partida</button>
   <button id="restoreRow"><span class="dot"></span>Restaurar partida…</button>
@@ -381,7 +424,10 @@
   <button id="panelHandle" aria-expanded="true">semilla</button>
   <div id="chips" role="listbox" aria-label="Tipo de semilla"></div>
   <div id="editor">
-    <canvas id="preview" width="92" height="92" aria-hidden="true"></canvas>
+    <div id="pvcol">
+      <canvas id="preview" width="92" height="92" aria-hidden="true"></canvas>
+      <button id="infoBtn" aria-label="Ficha cósmica de esta semilla" title="Ficha cósmica">i</button>
+    </div>
     <div id="sliders">
       <div class="sl"><label for="sAng" id="lAng">Ángulo</label><input type="range" id="sAng"><output id="oAng"></output></div>
       <div class="sl"><label for="sDep" id="lDep">Niveles</label><input type="range" id="sDep"><output id="oDep"></output></div>
@@ -403,6 +449,23 @@
     <button class="vbtn ghost" id="noCollapse">Aún no</button>
   </div>
 </div>
+<div id="fichasVeil" class="veil" hidden>
+  <h2>Fichas cósmicas</h2>
+  <p>El cosmos real detrás de tu jardín.<br>
+  <small style="color:var(--dim)">Leer una por primera vez regala <b style="color:var(--gold)">✦ 50</b> de polvo estelar.</small></p>
+  <div id="fichaList"></div>
+  <div class="vrow"><button class="vbtn ghost" id="fichasClose">Cerrar</button></div>
+</div>
+
+<div id="fichaVeil" class="veil" hidden>
+  <p class="feyebrow" id="fichaKind"></p>
+  <h2 id="fichaTitle" style="font-size:clamp(20px,5.4vw,28px)"></h2>
+  <img id="fichaImg" alt="" hidden>
+  <div id="fichaFacts"></div>
+  <p class="fsrc" id="fichaSrc"></p>
+  <div class="vrow"><button class="vbtn ghost" id="fichaClose">Cerrar</button></div>
+</div>
+
 <div id="shopVeil" class="veil" hidden>
   <h2>Tienda de esencia</h2>
   <p>Tienes <b id="shopEss">⊙ 0</b> para gastar · tu producción permanente: +<span id="shopMult">0</span>%<br>
@@ -492,9 +555,8 @@ const fmt = n =>
 /* ---------- lienzos y mundo ---------- */
 const sky = $('#sky'), ctx = sky.getContext('2d');
 const stars = document.createElement('canvas'), sctx = stars.getContext('2d');
-const bake  = document.createElement('canvas'), bctx = bake.getContext('2d');
 const WORLD = 2.4;                      // el mundo mide 2.4 pantallas
-let W = 0, H = 0, DPR = 1, worldW = 0, worldH = 0, bakeScale = 1;
+let W = 0, H = 0, DPR = 1, worldW = 0, worldH = 0;
 let twinkles = [];
 const cam = {x:0, y:0, z:1};
 
@@ -515,18 +577,14 @@ function resize(){
   DPR = Math.min(devicePixelRatio || 1, 2);
   W = innerWidth; H = innerHeight;
   worldW = W*WORLD; worldH = H*WORLD;
-  bakeScale = Math.min(DPR, Math.sqrt(9e6/(worldW*worldH)));
   sky.width = W*DPR; sky.height = H*DPR;
   sky.style.width = W+'px'; sky.style.height = H+'px';
   stars.width = W*DPR; stars.height = H*DPR;
-  bake.width = Math.round(worldW*bakeScale); bake.height = Math.round(worldH*bakeScale);
   ctx.setTransform(DPR,0,0,DPR,0,0);
   sctx.setTransform(DPR,0,0,DPR,0,0);
-  bctx.setTransform(bakeScale,0,0,bakeScale,0,0);
   cam.x = cam.x || worldW/2; cam.y = cam.y || worldH/2;
   clampCam();
   genStarfield();
-  rebakeAll();
 }
 
 function genStarfield(){
@@ -783,7 +841,7 @@ const HITO_NAME = {copo:'Copo de Koch', galaxia:'Galaxia espiral', zoom:'zoom y 
 const S = {
   dust: 0, sel: 'brote', started: false, musicOn: true, mood: 'nebulosa',
   essence: 0, essLifetime: 0, collapses: 0, done: [], tut: 0, sawComet: false,
-  name: '',
+  name: '', fichas: [],
   shop: {heart:0, winds:0, harvest:0, memory:0},
   stats: {dustAll:0, comets:0, plants:0, prunes:0, time:0, born:Date.now()},
   params: {ang:24, dep:5, br:3, hue:268},
@@ -832,18 +890,90 @@ function drawItem(c, it){
 }
 
 function structureItems(st){
-  return GEN[st.t](st.rx*worldW, st.ry*worldH, st.p, 1, mulberry32(st.seed));
+  return GEN[st.t](0, 0, st.p, 1, mulberry32(st.seed));  // ancladas al origen
 }
 
-function rebakeAll(){
-  bctx.clearRect(0,0,worldW,worldH);
-  bctx.globalCompositeOperation = 'lighter';
-  for (const st of S.structures){
-    if (!growQueue.some(g=>g.st===st)) for (const it of structureItems(st)) drawItem(bctx, it);
+/* ---------- sprites por estructura: cada una vive y se anima ---------- */
+function buildSprite(st, full){
+  const items = structureItems(st);
+  let minX=1e9, minY=1e9, maxX=-1e9, maxY=-1e9;
+  for (const it of items){
+    if (it.k === 'l'){
+      const m = it.w*3;
+      minX = Math.min(minX, it.x1-m, it.x2-m); maxX = Math.max(maxX, it.x1+m, it.x2+m);
+      minY = Math.min(minY, it.y1-m, it.y2-m); maxY = Math.max(maxY, it.y1+m, it.y2+m);
+    } else {
+      const m = it.r*3.4;
+      minX = Math.min(minX, it.x-m); maxX = Math.max(maxX, it.x+m);
+      minY = Math.min(minY, it.y-m); maxY = Math.max(maxY, it.y+m);
+    }
   }
-  for (const g of growQueue){
-    g.items = structureItems(g.st);
-    for (let i=0;i<g.shown;i++) drawItem(bctx, g.items[i]);
+  const pad = 10;
+  minX -= pad; minY -= pad; maxX += pad; maxY += pad;
+  const wU = maxX-minX, hU = maxY-minY;
+  const hiRes = S.structures.length <= 30 ? 1.75 : 1;   // presupuesto de memoria
+  const ss = Math.min(Math.min(DPR, hiRes), 900/Math.max(wU, hU, 1));
+  const c = document.createElement('canvas');
+  c.width = Math.max(2, Math.ceil(wU*ss)); c.height = Math.max(2, Math.ceil(hU*ss));
+  const g = c.getContext('2d');
+  g.setTransform(ss, 0, 0, ss, -minX*ss, -minY*ss);
+  g.globalCompositeOperation = 'lighter';
+  const rng = mulberry32(st.seed + 7);
+  st.spr = {
+    c, g, ss, ox:-minX, oy:-minY, wU, hU,
+    maxR: Math.max(Math.hypot(minX,minY), Math.hypot(maxX,maxY),
+                   Math.hypot(minX,maxY), Math.hypot(maxX,minY)),
+    phase: rng()*TAU, dir: rng() < .5 ? -1 : 1,
+    items, shown: 0,
+    glint: st.t === 'copo' ? items.filter((_,i)=>i%3===0).map(it=>[it.x1,it.y1]) : null,
+  };
+  if (full){
+    for (const it of items) drawItem(g, it);
+    st.spr.shown = items.length;
+  }
+}
+function ensureSprites(){
+  for (const st of S.structures) if (!st.spr) buildSprite(st, true);
+}
+function drawStructures(g, t){
+  for (const st of S.structures){
+    const spr = st.spr;
+    if (!spr) continue;
+    const sx = w2sX(st.rx*worldW), sy = w2sY(st.ry*worldH);
+    const rad = (spr.maxR + 24)*cam.z;
+    if (sx < -rad || sx > W+rad || sy < -rad || sy > H+rad) continue;  // culling
+    let rot = 0, scl = 1, extra = 0;
+    if (!REDUCED){
+      switch (st.t){
+        case 'brote':   rot = Math.sin(t*.5 + spr.phase)*.022; break;              // brisa estelar
+        case 'copo':    rot = t*.03*spr.dir; break;
+        case 'galaxia': rot = t*.05*spr.dir; break;
+        case 'mandala': rot = t*.014*spr.dir; scl = 1 + .012*Math.sin(t*.7 + spr.phase); break;
+        case 'cuasar':  extra = .15 + .13*Math.sin(t*2.6 + spr.phase); break;      // pulso del núcleo
+        case 'agujero': extra = .10 + .10*Math.sin(t*4.3 + spr.phase); break;      // parpadeo Doppler
+      }
+    }
+    g.save();
+    g.translate(sx, sy);
+    if (rot) g.rotate(rot);
+    g.scale(cam.z*scl, cam.z*scl);
+    g.drawImage(spr.c, -spr.ox, -spr.oy, spr.wU, spr.hU);
+    if (extra > 0){
+      g.globalAlpha = extra;
+      g.globalCompositeOperation = 'lighter';
+      g.drawImage(spr.c, -spr.ox, -spr.oy, spr.wU, spr.hU);
+      g.globalCompositeOperation = 'source-over';
+      g.globalAlpha = 1;
+    }
+    if (spr.glint && !REDUCED && spr.shown >= spr.items.length){       // destello que recorre el copo
+      const n = spr.glint.length;
+      const p = spr.glint[Math.floor((((t*.22 + spr.phase) % 1) + 1) % 1 * n) % n];
+      g.fillStyle = 'rgba(180,240,255,.25)';
+      g.beginPath(); g.arc(p[0], p[1], 5, 0, TAU); g.fill();
+      g.fillStyle = 'rgba(255,255,255,.9)';
+      g.beginPath(); g.arc(p[0], p[1], 1.8, 0, TAU); g.fill();
+    }
+    g.restore();
   }
 }
 
@@ -960,7 +1090,8 @@ function plant(wx, wy, sx, sy){
   };
   S.structures.push(st);
   S.stats.plants++;
-  growQueue.push({st, items: structureItems(st), shown: 0});
+  buildSprite(st, false);
+  growQueue.push({st});
   burst(wx, wy, 16, S.params.hue);
   if (st.t === 'agujero' && st.rate > TYPES.agujero.base*(1+.5*(st.p.dep-1))+.01){
     floaters.push({txt:`atracción: +${fmt(st.rate)}/s`, x:sx, y:sy-30, age:0});
@@ -993,7 +1124,8 @@ function checkMilestones(silent){
     if (n >= m.n && !S.done.includes(m.id)){
       S.done.push(m.id);
       if (!silent){
-        toast(`✨ Hito · ${m.n} siembras — ${m.txt}`);
+        const ficha = FICHAS[m.id] ? ' · <b>nueva ficha cósmica ⓘ</b>' : '';
+        toast(`✨ Hito · ${m.n} siembras — ${m.txt}${ficha}`);
         Music.chime();
         if (m.id === 'singularidad' || m.id === 'foto' || m.id === 'zoom') refreshHUD();
       }
@@ -1002,7 +1134,7 @@ function checkMilestones(silent){
 }
 
 /* ---------- cometas y meteoros ---------- */
-let comet = null, cometTimer = 40, meteors = [], meteorTimer = 14;
+let comet = null, cometTimer = 40, meteors = [], meteorTimer = 14, ambientTimer = 4;
 const cometDelay = ()=> (50 + Math.random()*70) * Math.pow(.85, S.shop.winds||0);
 function spawnComet(){
   const c = core();
@@ -1026,6 +1158,9 @@ function collectComet(){
   Music.chime();
   comet = null;
   cometTimer = cometDelay();
+  if (S.stats.comets === 1 && !S.fichas.includes('cometa')){
+    toast('☄ Nueva ficha cósmica: <b>el cometa</b> · menú ♪ → Fichas cósmicas');
+  }
   refreshHUD();
 }
 
@@ -1049,6 +1184,35 @@ function loop(ts){
       comet.age += dt; comet.x += comet.vx*dt; comet.y += comet.vy*dt;
       if (comet.age > comet.life){ comet = null; cometTimer = cometDelay(); }
     }
+    // vida ambiental: polvo emanando y materia cayendo al agujero negro
+    if (!REDUCED){
+      ambientTimer -= dt;
+      if (ambientTimer <= 0){
+        ambientTimer = 2.5 + Math.random()*3;
+        const vis = S.structures.filter(st=>{
+          const sx = w2sX(st.rx*worldW), sy = w2sY(st.ry*worldH);
+          return sx > 0 && sx < W && sy > 0 && sy < H;
+        });
+        if (vis.length){
+          const st = vis[Math.floor(Math.random()*vis.length)];
+          const ax = st.rx*worldW, ay = st.ry*worldH;
+          if (st.t === 'agujero'){
+            for (let i=0;i<3;i++){
+              const a = Math.random()*TAU, r = 55 + Math.random()*45;
+              const px = ax + Math.cos(a)*r, py = ay + Math.sin(a)*r*.5;
+              particles.push({x:px, y:py, vx:-(px-ax)*1.1-(py-ay)*.8,
+                vy:-(py-ay)*1.1+(px-ax)*.8, life:.9, age:0, h:40});
+            }
+          } else {
+            for (let i=0;i<2;i++){
+              particles.push({x:ax+(Math.random()-.5)*50, y:ay+(Math.random()-.5)*50,
+                vx:(Math.random()-.5)*8, vy:-6-Math.random()*8,
+                life:2.2, age:0, h:st.p.hue});
+            }
+          }
+        }
+      }
+    }
     if (!REDUCED){
       meteorTimer -= dt;
       if (meteorTimer <= 0){
@@ -1059,21 +1223,22 @@ function loop(ts){
     }
   }
 
-  // crecimiento → hornear al lienzo del mundo
-  bctx.globalCompositeOperation = 'lighter';
-  for (const g of growQueue){
-    const step = Math.max(2, Math.ceil(g.items.length/200));
-    const end = Math.min(g.items.length, g.shown + step);
-    for (let i=g.shown;i<end;i++) drawItem(bctx, g.items[i]);
-    if (end > g.shown && Math.random() < .5){
-      const it = g.items[end-1];
-      const px = it.k==='l'?it.x2:it.x, py = it.k==='l'?it.y2:it.y;
-      particles.push({x:px,y:py,vx:(Math.random()-.5)*20,vy:(Math.random()-.5)*20,
-        life:.6,age:0,h:g.st.p.hue});
+  // crecimiento → hornear al sprite de cada estructura
+  for (const gq of growQueue){
+    const spr = gq.st.spr;
+    const step = Math.max(2, Math.ceil(spr.items.length/200));
+    const end = Math.min(spr.items.length, spr.shown + step);
+    for (let i=spr.shown;i<end;i++) drawItem(spr.g, spr.items[i]);
+    if (end > spr.shown && Math.random() < .5){
+      const it = spr.items[end-1];
+      const lx = it.k==='l'?it.x2:it.x, ly = it.k==='l'?it.y2:it.y;
+      particles.push({x:gq.st.rx*worldW+lx, y:gq.st.ry*worldH+ly,
+        vx:(Math.random()-.5)*20, vy:(Math.random()-.5)*20,
+        life:.6, age:0, h:gq.st.p.hue});
     }
-    g.shown = end;
+    spr.shown = end;
   }
-  growQueue = growQueue.filter(g=>g.shown < g.items.length);
+  growQueue = growQueue.filter(gq=>gq.st.spr.shown < gq.st.spr.items.length);
 
   // pintar
   ctx.setTransform(DPR,0,0,DPR,0,0);
@@ -1086,10 +1251,10 @@ function loop(ts){
     ctx.fillStyle = `rgba(224,220,255,${a})`;
     ctx.beginPath(); ctx.arc(tw.x,tw.y,tw.r,0,TAU); ctx.fill();
   }
-  // vista de cámara sobre el mundo horneado
-  const sx0 = (cam.x - W/(2*cam.z))*bakeScale, sy0 = (cam.y - H/(2*cam.z))*bakeScale;
-  const sw = (W/cam.z)*bakeScale, sh = (H/cam.z)*bakeScale;
-  ctx.drawImage(bake, sx0, sy0, sw, sh, 0, 0, W, H);
+  // estructuras vivas: sprites con rotación, vaivén y pulsos
+  ctx.globalCompositeOperation = 'source-over';   // los halos ya vienen aditivos en cada sprite
+  drawStructures(ctx, t);
+  ctx.globalCompositeOperation = 'lighter';
 
   // corazón del universo
   if (S.started){
@@ -1221,6 +1386,7 @@ function selectType(id){
     SL[k].out.textContent = SL[k].inp.value;
   }
   renderChips(true);
+  updateInfoBtn();
   requestPreview();
 }
 for (const k of ['ang','dep','br']){
@@ -1549,9 +1715,7 @@ fotoBtn.addEventListener('click', ()=>{
   const g = ec.getContext('2d');
   g.setTransform(scale,0,0,scale,0,0);
   g.drawImage(stars, 0, 0, W, H);
-  g.globalCompositeOperation = 'lighter';
-  const sx0 = (cam.x - W/(2*cam.z))*bakeScale, sy0 = (cam.y - H/(2*cam.z))*bakeScale;
-  g.drawImage(bake, sx0, sy0, (W/cam.z)*bakeScale, (H/cam.z)*bakeScale, 0, 0, W, H);
+  drawStructures(g, performance.now()/1000);
   g.globalCompositeOperation = 'source-over';
   g.font = 'italic 15px Palatino, Georgia, serif';
   g.fillStyle = 'rgba(216,211,236,.9)';
@@ -1598,7 +1762,6 @@ $('#doCollapse').addEventListener('click', ()=>{
     S.structures = []; growQueue = []; comet = null;
     S.dust = 10 + 100*(S.shop.memory||0);
     cam.x = worldW/2; cam.y = worldH/2; cam.z = 1;
-    bctx.clearRect(0,0,worldW,worldH);
     genStarfield();
     burst(c.x, c.y, REDUCED?40:220);
     requestAnimationFrame(()=>{
@@ -1658,6 +1821,7 @@ function renderStats(){
     ['Cometas atrapados', S.stats.comets],
     ['Colapsos (nuevos big bangs)', S.collapses],
     ['Esencia acumulada', '⊙ '+S.essLifetime],
+    ['Fichas cósmicas leídas', `${S.fichas.length} de ${Object.keys(FICHAS).length}`],
     ['Tiempo contemplando', `${h}h ${m}m`],
     ['Universo nacido', born],
   ];
@@ -1679,6 +1843,142 @@ $('#doName').addEventListener('click', ()=>{
   $('#nameVeil').hidden = true;
   toast(S.name ? `Tu universo ahora se llama <b>${esc(S.name)}</b>` : 'Tu universo queda sin nombre');
   save();
+});
+
+/* ---------- fichas cósmicas: el cosmos real detrás del jardín ----------
+   Datos curados de fuentes oficiales. Las imágenes vienen de la biblioteca
+   pública de la NASA (dominio público) y se cargan solo con conexión;
+   sin internet la ficha funciona igual, solo sin foto.                   */
+const NASA_IMG = id => `https://images-assets.nasa.gov/image/${id}/${id}~`;
+const FICHAS = {
+  brote: {game:'Brote estelar', kind:'Matemáticas de la vida',
+    title:'Sistemas-L: el idioma de las plantas',
+    img:NASA_IMG('GSFC_20171208_Archive_e002160')+'medium.jpg',
+    imgAlt:'Delta del río Lena visto desde el espacio (NASA/Landsat)',
+    facts:[
+      'En 1968, el biólogo Aristid Lindenmayer inventó los sistemas-L: reglas simples que, repetidas una y otra vez, dibujan plantas enteras — exactamente como crece tu brote estelar.',
+      'La naturaleza está llena de fractales: los ríos se ramifican como este delta del río Lena en Siberia, fotografiado por el satélite Landsat de la NASA.',
+      'Tu cuerpo también es fractal: los bronquios de tus pulmones se ramifican unas 23 veces, empacando una superficie del tamaño de una cancha de tenis dentro de tu pecho.'],
+    srcTxt:'Imagen: NASA/Landsat (dominio público)',
+    srcUrl:'https://es.wikipedia.org/wiki/Sistema-L'},
+  copo: {game:'Copo de Koch', kind:'Geometría fractal',
+    title:'El copo de Koch: un borde infinito',
+    img:null, imgAlt:'',
+    facts:[
+      'Helge von Koch lo describió en 1904: cada lado se parte en cuatro, una y otra vez. Con infinitas iteraciones su perímetro es infinito… pero encierra un área finita.',
+      'No es una línea ni una superficie: su dimensión fractal es log 4 ÷ log 3 ≈ 1.26. Los matemáticos de la época llamaron «monstruos» a estas curvas.',
+      'Los copos de nieve reales crecen con seis brazos porque las moléculas de agua se acomodan en hexágonos al congelarse — geometría cayendo del cielo.'],
+    srcTxt:'Fuente: matemáticas clásicas',
+    srcUrl:'https://es.wikipedia.org/wiki/Copo_de_nieve_de_Koch'},
+  galaxia: {game:'Galaxia espiral', kind:'Astronomía',
+    title:'Galaxias espirales: islas de estrellas',
+    img:NASA_IMG('PIA04230')+'small.jpg',
+    imgAlt:'Galaxia Remolino M51, telescopio espacial Hubble (NASA)',
+    facts:[
+      'Nuestra Vía Láctea es una espiral con entre 100 y 400 mil millones de estrellas. El Sol tarda unos 230 millones de años en completar una vuelta.',
+      'Los brazos espirales no son objetos fijos: son ondas de densidad — embotellamientos cósmicos de gas y estrellas donde nacen soles nuevos.',
+      'La Galaxia Remolino (M51) de esta imagen está a 31 millones de años luz, y fue la primera donde se dibujó la estructura espiral, en 1845.'],
+    srcTxt:'Imagen: NASA/Hubble (dominio público)',
+    srcUrl:'https://ciencia.nasa.gov/universo/'},
+  mandala: {game:'Mandala cósmico', kind:'Astronomía',
+    title:'Nebulosas: el mandala final de una estrella',
+    img:NASA_IMG('southern_ring_nebula')+'medium.jpg',
+    imgAlt:'Nebulosa del Anillo del Sur, telescopio James Webb (NASA/ESA/CSA)',
+    facts:[
+      'Cuando una estrella como el Sol agota su combustible, expulsa sus capas en ondas casi simétricas: una nebulosa planetaria, su mandala de despedida.',
+      'Esta es la Nebulosa del Anillo del Sur, vista por el telescopio espacial James Webb: en el centro hay dos estrellas, y la más tenue es la que esculpió los anillos.',
+      'Al Sol le espera el mismo destino dentro de unos 5 mil millones de años — y sus átomos volverán al cosmos para formar mundos nuevos.'],
+    srcTxt:'Imagen: NASA/ESA/CSA · James Webb',
+    srcUrl:'https://ciencia.nasa.gov/universo/'},
+  cuasar: {game:'Cuásar', kind:'Astronomía extrema',
+    title:'Cuásares: los faros del universo',
+    img:NASA_IMG('PIA15831')+'small.jpg',
+    imgAlt:'Los hogares de los cuásares, telescopio Hubble (NASA)',
+    facts:[
+      'Un cuásar es el núcleo de una galaxia donde un agujero negro supermasivo devora materia tan rápido que brilla más que un billón de soles.',
+      'El primero identificado, 3C 273, parece una estrellita tenue… pero está a 2 400 millones de años luz. Es de los objetos más luminosos del universo.',
+      'Sus chorros relativistas — como los de tu cuásar — lanzan partículas casi a la velocidad de la luz a lo largo de miles de años luz.'],
+    srcTxt:'Imagen: NASA/Hubble (dominio público)',
+    srcUrl:'https://es.wikipedia.org/wiki/Cu%C3%A1sar'},
+  agujero: {game:'Agujero negro', kind:'Astronomía extrema',
+    title:'Agujeros negros: la gravedad absoluta',
+    img:NASA_IMG('PIA23122')+'medium.jpg',
+    imgAlt:'La galaxia M87, hogar del primer agujero negro fotografiado (NASA/Spitzer)',
+    facts:[
+      'Nada que cruce su horizonte de sucesos puede volver, ni siquiera la luz. Lo que brilla es el disco de acreción: materia calentándose a millones de grados antes de caer.',
+      'En 2019, el Event Horizon Telescope logró la primera foto de uno: M87*, con 6 500 millones de masas solares, vive en la galaxia de esta imagen.',
+      'En el centro de la Vía Láctea está el nuestro: Sagitario A*, de 4 millones de soles. Su imagen se reveló en 2022.'],
+    srcTxt:'Imagen: NASA/Spitzer (dominio público)',
+    srcUrl:'https://ciencia.nasa.gov/universo/'},
+  cometa: {game:'Cometa', kind:'Sistema solar',
+    title:'Cometas: mensajeros de hielo',
+    img:NASA_IMG('NHQ202007120001')+'medium.jpg',
+    imgAlt:'El cometa NEOWISE sobre Washington en 2020 (NASA/Bill Ingalls)',
+    facts:[
+      'Son «bolas de nieve sucias»: hielo, polvo y roca que sobran de la formación del sistema solar, hace 4 600 millones de años.',
+      'Su cola no marca hacia dónde van: siempre apunta en dirección contraria al Sol, empujada por el viento solar.',
+      'El cometa NEOWISE de esta imagen nos visitó en 2020 y no volverá en unos 6 800 años. Por eso hay que atraparlos al vuelo — como en tu jardín.'],
+    srcTxt:'Imagen: NASA/Bill Ingalls',
+    srcUrl:'https://ciencia.nasa.gov/universo/'},
+  singularidad: {game:'La Singularidad', kind:'Cosmología',
+    title:'El Big Bang: la primera luz',
+    img:NASA_IMG('PIA18916')+'small.jpg',
+    imgAlt:'Polarización del fondo cósmico de microondas (NASA)',
+    facts:[
+      'El universo comenzó hace 13 800 millones de años en un estado inimaginablemente denso y caliente: la singularidad. Desde entonces no ha dejado de expandirse.',
+      'Todavía podemos «ver» su eco: el fondo cósmico de microondas, la luz liberada cuando el universo tenía apenas 380 000 años, brilla en todas direcciones.',
+      'Casi todos los átomos de tu cuerpo más pesados que el hidrógeno se forjaron dentro de estrellas. Colapsar y renacer no es solo un juego: es la historia del cosmos.'],
+    srcTxt:'Imagen: NASA (dominio público)',
+    srcUrl:'https://ciencia.nasa.gov/universo/'},
+};
+function updateInfoBtn(){
+  $('#infoBtn').classList.toggle('unread', !!FICHAS[S.sel] && !S.fichas.includes(S.sel));
+}
+function openFicha(id){
+  const f = FICHAS[id];
+  if (!f) return;
+  $('#fichaKind').textContent = f.kind;
+  $('#fichaTitle').textContent = f.title;
+  const img = $('#fichaImg');
+  if (f.img){
+    img.hidden = false; img.alt = f.imgAlt;
+    img.onerror = ()=>{ img.hidden = true; };   // sin conexión: la ficha vive igual
+    img.src = f.img;
+  } else img.hidden = true;
+  $('#fichaFacts').innerHTML = f.facts.map(x=>`<div class="fact">${x}</div>`).join('');
+  $('#fichaSrc').innerHTML =
+    `${f.srcTxt} · <a href="${f.srcUrl}" target="_blank" rel="noopener">saber más →</a>`;
+  $('#fichasVeil').hidden = true;
+  $('#fichaVeil').hidden = false;
+  if (!S.fichas.includes(id)){
+    S.fichas.push(id);
+    S.dust += 50; S.stats.dustAll += 50;
+    toast('Conocimiento estelar: <b>+✦ 50</b>');
+    Music.chime();
+    refreshHUD(); save();
+  }
+  updateInfoBtn();
+}
+function renderFichaList(){
+  const list = $('#fichaList');
+  list.innerHTML = '';
+  for (const [id,f] of Object.entries(FICHAS)){
+    const read = S.fichas.includes(id);
+    const b = document.createElement('button');
+    b.className = 'frow';
+    b.innerHTML = `<div class="fi">${f.game}<small>${f.title}</small></div>
+      <span class="st">${read ? '✓' : '✦ 50'}</span>`;
+    b.addEventListener('click', ()=>openFicha(id));
+    list.appendChild(b);
+  }
+}
+$('#infoBtn').addEventListener('click', ()=>openFicha(S.sel));
+$('#fichaClose').addEventListener('click', ()=> $('#fichaVeil').hidden = true);
+$('#fichasClose').addEventListener('click', ()=> $('#fichasVeil').hidden = true);
+$('#fichasRow').addEventListener('click', ()=>{
+  musicMenu.hidden = true;
+  renderFichaList();
+  $('#fichasVeil').hidden = false;
 });
 
 /* ---------- podar estructuras ---------- */
@@ -1711,7 +2011,6 @@ $('#doPrune').addEventListener('click', ()=>{
   growQueue = growQueue.filter(g=>g.st !== st);
   S.dust += refund;
   burst(st.rx*worldW, st.ry*worldH, 20, st.p.hue);
-  rebakeAll();
   Music.notifyGrowth(S.structures.length);
   toast(`Podado · recuperaste <b>✦ ${fmt(refund)}</b>`);
   refreshHUD(); save();
@@ -1798,7 +2097,7 @@ function save(){
     localStorage.setItem('bbg1', JSON.stringify({
       v:2, dust:S.dust, musicOn:S.musicOn, mood:S.mood,
       essence:S.essence, essLifetime:S.essLifetime, collapses:S.collapses, done:S.done,
-      tut:S.tut, sawComet:S.sawComet, name:S.name, shop:S.shop, stats:S.stats,
+      tut:S.tut, sawComet:S.sawComet, name:S.name, fichas:S.fichas, shop:S.shop, stats:S.stats,
       at:Date.now(),
       structures:S.structures.map(({t,rx,ry,p,seed,rate})=>({t,rx,ry,p,seed,rate})),
     }));
@@ -1821,6 +2120,7 @@ function load(){
       S.tut = d.tut ?? TUT.length;
       S.sawComet = !!d.sawComet;
       S.name = d.name || '';
+      S.fichas = d.fichas || [];
       S.shop = Object.assign({heart:0,winds:0,harvest:0,memory:0}, d.shop || {});
       S.stats = Object.assign({dustAll:0,comets:0,plants:0,prunes:0,time:0,born:Date.now()}, d.stats || {});
     } else {
@@ -1868,6 +2168,7 @@ addEventListener('resize', resize);
 addEventListener('beforeunload', save);
 document.addEventListener('visibilitychange', ()=>{ if (document.hidden) save(); });
 resize();
+ensureSprites();
 selectType(S.sel);
 refreshHUD();
 requestAnimationFrame(loop);

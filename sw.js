@@ -2,7 +2,7 @@
 // Estrategia: stale-while-revalidate — responde de cache al instante y
 // actualiza en segundo plano (la nueva versión aplica en la siguiente visita).
 'use strict';
-const CACHE = 'bbg-20260703102338';
+const CACHE = 'bbg-20260703180331';
 const ASSETS = ['/', '/manifest.webmanifest', '/favicon.svg',
   '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png'];
 
